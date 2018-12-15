@@ -1,0 +1,74 @@
+version: '3'
+
+services:
+  server:
+    build:
+      context: ./server
+      args:
+        UID: ${USER_ID}
+        GID: ${GROUP_ID}
+    container_name: cachetags_server
+    ports:
+      - 80:80
+    volumes:
+      - ./data/www:/home/serveruser/vhosts:delegated
+      - apache-logs:/var/log/apache2
+    depends_on:
+      - db
+      - fpm
+    networks:
+      cachetags_net:
+        aliases:
+          - server
+          - cachetags.local
+          - www.cachetags.local
+  fpm:
+    build:
+      context: ./fpm
+      args:
+        UID: ${USER_ID}
+        GID: ${GROUP_ID}
+    container_name: cachetags_fpm
+    volumes:
+      - ./data/www:/home/serveruser/vhosts:delegated
+    networks:
+      cachetags_net:
+  redis:
+    image: redis:4
+    container_name: cachetags_redis
+    volumes:
+       - redis-data:/data
+    networks:
+      cachetags_net:
+  db:
+    image: mariadb:10.4
+    ports:
+      - 3306:3306
+    container_name: cachetags_db
+    volumes:
+      - db-data:/var/lib/mysql
+      - db-logs:/var/log/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    networks:
+      cachetags_net:
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: cachetags_phpmyadmin
+    ports:
+      - 8080:80
+    environment:
+      PMA_HOST: db
+      PHP_UPLOAD_MAX_FILESIZE: 67108864
+    networks:
+      cachetags_net:
+networks:
+  cachetags_net:
+volumes:
+  db-data:
+  db-logs:
+  apache-logs:
+  redis-data:
